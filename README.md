@@ -128,3 +128,30 @@ pytest -q
 ### Further production work
 
 Persist reports and audit trails, add authentication/rate limits, establish a paid reliable quote-feed, expand 10-K retrieval to complete section-aware extraction and PDFs when available, build cross-company independently labelled benchmarks, handle currency/fiscal alignment, refine fully diluted share estimates and company-specific WACC/tax/NWC forecasts.
+
+## Version 4: research terminal
+
+- Refreshed wide-layout Streamlit research interface, KPI cards and margin trends.
+- A transparent financial quality screen that flags revenue growth, operating profitability, net income margin and free cash flow without inventing a numerical investment score.
+- Grounded AI research copilot in the ticker report, using available XBRL facts and, when retrieved, passages from the company's SEC 10-K. The copilot validates cited evidence IDs and links back to SEC sources; this is **not** a semantic truth or citation-support guarantee.
+- Self-contained HTML research export. Download the report and open in a browser, or use your browser's Print → Save as PDF.
+- Secured deployment pattern using Streamlit Cloud secrets, leaving source code free of keys.
+
+### Deploy an update to an existing Streamlit website
+
+1. Replace the corresponding source files in your local repository with this ZIP's files. Keep `.git/` intact; do **not** replace your repository with a fresh `git init`.
+2. Verify locally: `python -m pip install -r requirements.txt`, then `python -m pytest -q` and `streamlit run app.py`.
+3. Push: `git add . && git commit -m "Add V4 research terminal and AI copilot" && git push origin main`.
+4. Streamlit Cloud normally redeploys from the `main` branch. If not, reboot the app from its management page.
+5. In Streamlit Cloud app settings → Secrets, enter:
+
+   ```toml
+   OPENAI_API_KEY = "YOUR_API_KEY"
+   SEC_USER_AGENT = "Your Name your-real-contact@example.com"
+   ```
+
+   Keep the repository private if desired. Never commit secrets or publish them in screenshots.
+
+### Known limitations
+
+The copilot does not search live news or stock price data. It uses only the already retrieved financial facts and optional candidate filing excerpts. Retrieval of excerpts does not demonstrate full 10-K coverage. Citation validation confirms that source IDs exist, **not** that each sentence is semantically supported. Real-filing benchmark accuracy and independent analyst time studies remain to be performed. DCF estimates depend on editable assumptions and verified share counts. This is research software, not investment advice.

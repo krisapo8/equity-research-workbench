@@ -11,6 +11,8 @@ from research.sec import fetch_company_research, filing_linked_findings, llm_sec
 from research.valuation import Assumptions, dcf, scenarios, sensitivity
 from research.market import quote, peer_table
 from research.filings import recent_10k, filing_text, excerpts, analyse_filing_ai, benchmark_filing_findings
+from research.copilot import evidence_pack, ask_research_question, health_screen
+from research.reporting import make_html_report
 
 
 def env_or_secret(key):
@@ -19,16 +21,37 @@ def env_or_secret(key):
     try:return st.secrets.get(key,'')
     except Exception:return ''
 
-st.set_page_config(page_title='Equity Research Workbench',page_icon='📊',layout='wide')
-st.markdown('''<style>
-.block-container {padding-top: 2rem; max-width: 1300px}
-[data-testid="stMetric"] {border: 1px solid rgba(128,128,128,.2);border-radius:12px;padding:15px}
-h1,h2,h3 {letter-spacing:-.02em}
-</style>''',unsafe_allow_html=True)
-st.title('Equity Research Workbench')
-st.caption('Filing extraction · financial analysis · evidence-backed research · validation')
-
+st.set_page_config(page_title='Research Terminal | Equity Intelligence',page_icon='◈',layout='wide',initial_sidebar_state='expanded')
+st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+:root {--accent:#3f89f6}
+html, body, [class*="css"], [data-testid="stApp"] {font-family:'DM Sans',sans-serif}
+[data-testid="stAppViewContainer"] {background:linear-gradient(155deg,rgba(33,104,173,.055),transparent 34%),var(--background-color)}
+.block-container {padding-top:1.7rem;max-width:1480px;padding-bottom:4rem}
+h1,h2,h3 {font-family:'Space Grotesk','DM Sans',sans-serif;letter-spacing:-.035em}
+h1 {font-size:2.25rem!important}
+[data-testid="stMetric"] {border:1px solid rgba(120,145,172,.22);border-radius:16px;padding:19px 21px;background:rgba(105,139,177,.045)}
+[data-testid="stMetricLabel"] {font-size:.83rem;letter-spacing:.01em}
+[data-testid="stMetricValue"] {font-family:'Space Grotesk',sans-serif;font-size:1.7rem}
+[data-testid="stSidebar"] {border-right:1px solid rgba(140,160,180,.18)}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {font-size:.9rem}
+.stTabs [data-baseweb="tab-list"] {gap:8px;overflow-x:auto}
+.stTabs [data-baseweb="tab"] {border-radius:9px 9px 0 0;padding-left:15px;padding-right:15px;white-space:nowrap}
+.stButton button[kind="primary"] {border-radius:10px;background:#2563eb;border:0}
+.stDownloadButton button {border-radius:10px}
+.brand-banner {border:1px solid rgba(120,148,182,.22);padding:22px 27px;margin-bottom:22px;border-radius:18px;
+background:linear-gradient(110deg,rgba(25,91,185,.10),rgba(63,137,246,.02))}
+.brand-kicker {font-size:.73rem;font-weight:700;letter-spacing:.18em;color:#5194f5;margin-bottom:4px}
+.brand-title {font-family:'Space Grotesk',sans-serif;font-size:2.05rem;font-weight:700;letter-spacing:-.045em;margin:0 0 5px}
+.brand-desc {font-size:.91rem;opacity:.72;margin:0}
+.small-label {font-size:.72rem;letter-spacing:.1em;opacity:.65;text-transform:uppercase;font-weight:700}
+</style>""",unsafe_allow_html=True)
+st.markdown("""<div class="brand-banner"><div class="brand-kicker">EQUITY INTELLIGENCE PLATFORM / V4</div>
+<div class="brand-title">Research Terminal</div>
+<p class="brand-desc">Financial intelligence · scenario valuation · SEC evidence · AI research copilot</p></div>""",unsafe_allow_html=True)
 with st.sidebar:
+    st.markdown('### ◈ Research setup')
+    st.caption('Source, coverage and model settings')
     st.header('Data source')
     mode=st.radio('Filing source',['Ticker lookup (US SEC)','Illustrative demo','Upload company filings'],label_visibility='collapsed')
     if mode=='Ticker lookup (US SEC)':
@@ -46,7 +69,11 @@ with st.sidebar:
     else:
         extraction_mode='SEC XBRL (automatic)'
         st.caption('Financial data comes from SEC XBRL. The LLM is optional for the written interpretation.')
-    api_key=st.text_input('OpenAI API key (optional for demo)',type='password',value=env_or_secret('OPENAI_API_KEY'))
+    api_key=env_or_secret('OPENAI_API_KEY')
+    if api_key:
+        st.success('AI access configured securely')
+    else:
+        api_key=st.text_input('OpenAI API key (optional)',type='password',help='For public deployment, set OPENAI_API_KEY in Streamlit app secrets. Avoid entering it on shared devices.')
     model=st.text_input('Extraction and summary model',value='gpt-4.1-mini')
     do_extract=st.button('Generate company report' if mode=='Ticker lookup (US SEC)' else 'Run research',type='primary',use_container_width=True)
     st.divider()
@@ -65,6 +92,8 @@ if mode=='Ticker lookup (US SEC)':
                 company, facts, financials=fetch_company_research(ticker_query,sec_identity,sec_years)
             st.session_state['ticker_report']={'company':company,'facts':facts,'financials':financials,'seconds':time.perf_counter()-start}
             st.session_state['ticker_ai_note']=None
+            for key in ('copilot_result','copilot_ticker','copilot_question','peer_results','filing_data','filing_analysis'):
+                st.session_state.pop(key,None)
         except Exception as exc:
             st.error(f'Could not generate ticker report: {exc}')
     report=st.session_state.get('ticker_report')
@@ -74,15 +103,24 @@ if mode=='Ticker lookup (US SEC)':
     company=report['company']; facts=report['facts']; fin=report['financials']
     if ticker_query.strip().upper() not in (company['ticker'].upper(),company['title'].upper()):
         st.info('The displayed report belongs to the previous search. Click Generate company report to update it.')
-    st.markdown(f"### {company['title']} ({company['ticker']})")
+    st.markdown(f"### {company['title']} · {company['ticker']}")
     st.caption(f"SEC CIK {int(company['cik_str']):010d} | {len(fin)} annual periods | USD millions | SEC XBRL filing data | Automated in {report['seconds']:.1f} seconds")
     latest=fin.iloc[-1]
     metrics=st.columns(4)
     for col,key,suffix in zip(metrics,['Revenue','Revenue growth %','Operating margin %','FCF'],[' USD m','%','%',' USD m']):
         val=latest[key]
         col.metric(key,('N/A' if pd.isna(val) else f'{val:,.1f}{suffix}'))
-    summary,history,valuation,peers,filings,evidence=st.tabs(['Company report','Historical financials','DCF valuation','Comparable companies','AI filing analysis','SEC evidence'])
+    summary,history,valuation,peers,filings,copilot,evidence=st.tabs(['Overview','Financial history','DCF valuation','Peer comparison','Filing intelligence','AI copilot','Evidence ledger'])
     with summary:
+        st.markdown('#### Financial quality signals')
+        st.caption('Simple, disclosed tests. These are indicators for investigation, not a credit rating or investment recommendation.')
+        check_rows=health_screen(fin)
+        signal_cols=st.columns(len(check_rows))
+        for signal_col, signal in zip(signal_cols,check_rows):
+            label={'Positive':'🟢','Review':'🟠','Unavailable':'⚪'}[signal['status']]
+            signal_col.metric(signal['metric'],label+' '+signal['status'])
+            signal_col.caption(signal['source_metric']+' > 0; missing values are not scored')
+        st.divider()
         note=filing_linked_findings(company,facts,fin)
         st.markdown('#### Financial highlights')
         for item in note['findings']:
@@ -108,12 +146,19 @@ if mode=='Ticker lookup (US SEC)':
         body+='\n\n## Limitations\n'+'\n'.join(f'- {x}' for x in note['risks'])
         if st.session_state.get('ticker_ai_note'): body+='\n\n## AI commentary\n'+st.session_state['ticker_ai_note']
         st.download_button('Download research report (Markdown)',body,f"{company['ticker']}_research.md",'text/markdown')
+        html_report=make_html_report(company,facts,fin,note,st.session_state.get('ticker_ai_note') or '',st.session_state.get('copilot_result') if st.session_state.get('copilot_ticker')==company['ticker'] else None)
+        st.download_button('Download polished report (HTML)',html_report,f"{company['ticker']}_research.html",'text/html',help='Open the HTML in a browser, or use Print → Save as PDF.')
     with history:
         columns=[c for c in ['Revenue','EBITDA','FCF','Net debt'] if fin[c].notna().any()]
         if columns:
             fig=px.line(fin.reset_index(),x='year',y=columns,markers=True)
             fig.update_layout(yaxis_title='USD millions',xaxis=dict(dtick=1))
             st.plotly_chart(fig,use_container_width=True)
+        margin_cols=[c for c in ['Operating margin %','Net margin %','EBITDA margin %'] if c in fin and fin[c].notna().any()]
+        if margin_cols:
+            margin_fig=px.line(fin.reset_index(),x='year',y=margin_cols,markers=True,title='Margin development')
+            margin_fig.update_layout(yaxis_title='Percentage points',xaxis=dict(dtick=1),legend_title='')
+            st.plotly_chart(margin_fig,use_container_width=True)
         st.dataframe(fin.style.format(precision=2,na_rep='N/A'),use_container_width=True)
         st.download_button('Download financial ratios (CSV)',fin.to_csv().encode(),f"{company['ticker']}_ratios.csv",'text/csv')
 
@@ -223,6 +268,46 @@ if mode=='Ticker lookup (US SEC)':
                     try: st.json(benchmark_filing_findings(analysis,pd.read_csv(review_file)))
                     except Exception as exc:st.error(f'Invalid review file: {exc}')
                 st.caption('Full-document completeness is not established by matching candidate excerpts. Source IDs confirm the cited snippet exists, not that its interpretation is correct.')
+
+    with copilot:
+        st.subheader('Ask the research copilot')
+        st.caption('Questions are answered from SEC-reported annual facts and optional source excerpts already retrieved from the company filing. Every displayed claim includes a linked evidence ID.')
+        if not api_key:
+            st.info('Configure OPENAI_API_KEY in Streamlit Cloud secrets to enable AI research questions.')
+        existing_filing=st.session_state.get('filing_data')
+        segments=existing_filing['segments'] if existing_filing and existing_filing.get('ticker')==company['ticker'] else []
+        pack=evidence_pack(company,facts,fin,segments)
+        st.caption(f"Context available: {len(pack['facts'])} SEC financial facts and {len(pack['filing_excerpts'])} filing excerpts")
+        if not segments:
+            st.info('For answers about management, risk factors and the business model, first open Filing intelligence and click Fetch latest 10-K.')
+        suggestions=['How have revenue growth and margins changed?', 'What do the filings say about the company’s risks?', 'How strong is free cash flow generation?']
+        selected=st.selectbox('Example research questions',suggestions,index=None,placeholder='Choose a suggested question or enter your own')
+        question=st.text_area('Research question',value=selected or '',height=100,placeholder='What is driving operating margin changes?')
+        if st.button('Analyse with AI',key='copilot_run',type='primary',disabled=not bool(api_key) or not question.strip()):
+            try:
+                with st.spinner('Checking the evidence and generating a sourced answer...'):
+                    answer=ask_research_question(question,pack,api_key,model)
+                st.session_state['copilot_result']=answer
+                st.session_state['copilot_ticker']=company['ticker']
+                st.session_state['copilot_question']=question
+            except Exception as exc:
+                st.error(f'Copilot request failed: {exc}')
+        if st.session_state.get('copilot_ticker')==company['ticker'] and st.session_state.get('copilot_result'):
+            answer=st.session_state['copilot_result']
+            st.markdown('#### Answer')
+            st.write(answer['overview'])
+            for claim in answer['claims']:
+                st.markdown('**'+claim['claim']+'**')
+                st.caption('Sources: '+', '.join(f"[{source['id']}]({source['source_url']})" for source in claim['sources']))
+                if claim['limitation']:st.caption('Limitation: '+claim['limitation'])
+            if answer['unknowns']:
+                with st.expander('Missing information and unanswered questions'):
+                    for item in answer['unknowns']:st.write('• '+item)
+            st.caption(answer['citation_validation'])
+        st.divider()
+        with st.expander('Inspect the exact evidence supplied to the model'):
+            st.json({'company':pack['company'],'facts':pack['facts'],'computed_ratios':pack['computed_ratios'],
+                     'filing_excerpts':pack['filing_excerpts']})
 
     with evidence:
         st.caption('Each observation links to an SEC filing archive and identifies the US-GAAP XBRL concept, accession and filing date. These are filing-level citations, not verified page citations.')
