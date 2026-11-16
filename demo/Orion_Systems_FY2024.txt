@@ -1,0 +1,48 @@
+ORION SYSTEMS PLC
+ILLUSTRATIVE DATA ONLY: entirely fictional company and filing.
+Consolidated Statements of Income (USD millions)
+Revenue | 2024 | 1540 | USD millions
+Revenue | 2023 | 1320 | USD millions
+Revenue | 2022 | 1160 | USD millions
+Cost of revenue | 2024 | 825 | USD millions
+Cost of revenue | 2023 | 730 | USD millions
+Cost of revenue | 2022 | 675 | USD millions
+Operating income | 2024 | 255 | USD millions
+Operating income | 2023 | 198 | USD millions
+Operating income | 2022 | 152 | USD millions
+Net income | 2024 | 171 | USD millions
+Net income | 2023 | 129 | USD millions
+Net income | 2022 | 96 | USD millions
+Interest expense | 2024 | 26 | USD millions
+Interest expense | 2023 | 29 | USD millions
+Interest expense | 2022 | 31 | USD millions
+Depreciation and amortization | 2024 | 62 | USD millions
+Depreciation and amortization | 2023 | 58 | USD millions
+Depreciation and amortization | 2022 | 54 | USD millions
+ORION SYSTEMS PLC
+ILLUSTRATIVE DATA ONLY: entirely fictional company and filing.
+Consolidated Statements of Cash Flows (USD millions)
+Operating cash flow | 2024 | 225 | USD millions
+Operating cash flow | 2023 | 181 | USD millions
+Operating cash flow | 2022 | 149 | USD millions
+Capital expenditure | 2024 | 77 | USD millions
+Capital expenditure | 2023 | 69 | USD millions
+Capital expenditure | 2022 | 65 | USD millions
+ORION SYSTEMS PLC
+ILLUSTRATIVE DATA ONLY: entirely fictional company and filing.
+Consolidated Balance Sheets (USD millions)
+Total assets | 2024 | 1920 | USD millions
+Total assets | 2023 | 1685 | USD millions
+Total assets | 2022 | 1520 | USD millions
+Total liabilities | 2024 | 980 | USD millions
+Total liabilities | 2023 | 930 | USD millions
+Total liabilities | 2022 | 880 | USD millions
+Cash and equivalents | 2024 | 295 | USD millions
+Cash and equivalents | 2023 | 232 | USD millions
+Cash and equivalents | 2022 | 180 | USD millions
+Total debt | 2024 | 540 | USD millions
+Total debt | 2023 | 570 | USD millions
+Total debt | 2022 | 600 | USD millions
+Total equity | 2024 | 940 | USD millions
+Total equity | 2023 | 755 | USD millions
+Total equity | 2022 | 640 | USD millions
